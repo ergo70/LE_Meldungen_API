@@ -129,27 +129,18 @@ async def find(request: Request, erzeugt_von: Union[str, None] = None, erzeugt_b
 
 
 @app.get("/heute/", response_model=LEMeldungen)
-@limiter.limit("6/minute")
-async def all(request: Request) -> LEMeldungen:
-    and_part = []
-    params = []
-
+@limiter.limit("3/minute")
+async def today(request: Request) -> LEMeldungen:
     now = datetime.now()
     today = now.strftime('%Y-%m-%d')
 
-    and_part.append("created >= ?")
-    params.append(today)
-
-    and_part.append("created <= ?")
-    params.append(today)
-
     cur = con.cursor()
 
-    sql = """SELECT {} FROM le_meldungen WHERE {};""".format(
-        select_part, ' AND '.join(and_part))
+    sql = """SELECT {} FROM le_meldungen WHERE created = ?;""".format(
+        select_part)
 
     cur.execute(sql,
-                params)
+                [today])
 
     result = LEMeldungen(le_meldungen=[LEMeldung(PZN=r[0], ENR=r[1], Meldungsart=r[2], Beginn=r[3], Ende=r[4], Datum_der_letzten_Meldung=r[5], Art_des_Grundes=r[6], Arzneimittelbezeichnung=r[7], ATC_Code=r[8], Wirkstoffe=r[9],
                                                  Krankenhausrelevant=(r[10] == 1), Zulassungsinhaber=r[11], Telefon=r[12], EMail=r[13], Grund=r[14], Anmerkung_zum_Grund=r[15], Alternativpraeparat=r[16], Datum_der_Erstmeldung=r[17], Info_an_Fachkreise=r[18], Erzeugt_am=r[19]) for r in cur])
@@ -158,7 +149,7 @@ async def all(request: Request) -> LEMeldungen:
 
 
 @app.get("/alle/", response_model=LEMeldungen)
-@limiter.limit("6/minute")
+@limiter.limit("1/minute")
 async def all(request: Request) -> LEMeldungen:
     cur = con.cursor()
 
@@ -173,4 +164,3 @@ async def all(request: Request) -> LEMeldungen:
 if __name__ == "__main__":
     uvicorn.run("le_meldungen_API:app", host='0.0.0.0', port=443, reload=False,
                 ssl_keyfile="", ssl_certfile="")
-

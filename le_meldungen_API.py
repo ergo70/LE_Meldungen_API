@@ -44,9 +44,9 @@ class LEMeldungen(BaseModel):
     le_meldungen: List[LEMeldung] = []
 
 
-@app.get("/finden/", response_model=LEMeldungen)
+@app.get("/auswahl/", response_model=LEMeldungen)
 @limiter.limit("6/minute")
-async def find(request: Request, erzeugt_von: Union[str, None] = None, erzeugt_bis: Union[str, None] = None, pzn: Union[str, None] = None, enr: Union[str, None] = None, meldungsart: Union[str, None] = None, beginn_von: Union[str, None] = None, beginn_bis: Union[str, None] = None, ende_von: Union[str, None] = None, ende_bis: Union[str, None] = None, letzte_meldung_von: Union[str, None] = None, letzte_meldung_bis: Union[str, None] = None, arzneimittel: Union[str, None] = None, atc_code: Union[str, None] = None, wirkstoffe: Union[str, None] = None, krankenhausrelevant: Union[bool, None] = None) -> LEMeldungen:
+async def filter(request: Request, erzeugt_von: Union[str, None] = None, erzeugt_bis: Union[str, None] = None, pzn: Union[str, None] = None, enr: Union[str, None] = None, meldungsart: Union[str, None] = None, beginn_von: Union[str, None] = None, beginn_bis: Union[str, None] = None, ende_von: Union[str, None] = None, ende_bis: Union[str, None] = None, letzte_meldung_von: Union[str, None] = None, letzte_meldung_bis: Union[str, None] = None, arzneimittel: Union[str, None] = None, atc_code: Union[str, None] = None, wirkstoffe: Union[str, None] = None, krankenhausrelevant: Union[bool, None] = None) -> LEMeldungen:
     and_part = []
     params = []
 

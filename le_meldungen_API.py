@@ -14,7 +14,7 @@ con = sqlite3.connect('file:./LEMeldungen.db?mode=ro', uri=True)
 select_part = """pzn, enr, meldungsart, beginn, ende, datum_der_letzten_meldung, art_des_grundes, arzneimittelbezeichnung, atc_code, wirkstoffe, krankenhausrelevant, zulassungsinhaber, telefon, email, grund, anmerkung_zum_grund, alternativpraeparat, datum_der_erstmeldung, info_an_fachkreise, created"""
 
 limiter = Limiter(key_func=get_remote_address)
-app = FastAPI()
+app = FastAPI(title="BfArM Lieferengpass-Datenbank Demo API")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -46,7 +46,7 @@ class LEMeldungen(BaseModel):
     le_meldungen: List[LEMeldung] = []
 
 
-@app.get("/auswahl/", response_model=LEMeldungen)
+@app.get("/v1/auswahl/", response_model=LEMeldungen)
 @limiter.limit("6/minute")
 async def filter(request: Request, erzeugt_von: Union[str, None] = None, erzeugt_bis: Union[str, None] = None, pzn: Union[str, None] = None, enr: Union[str, None] = None, meldungsart: Union[str, None] = None, beginn_von: Union[str, None] = None, beginn_bis: Union[str, None] = None, ende_von: Union[str, None] = None, ende_bis: Union[str, None] = None, letzte_meldung_von: Union[str, None] = None, letzte_meldung_bis: Union[str, None] = None, arzneimittel: Union[str, None] = None, atc_code: Union[str, None] = None, wirkstoffe: Union[str, None] = None, krankenhausrelevant: Union[bool, None] = None) -> LEMeldungen:
     and_part = []
@@ -130,7 +130,7 @@ async def filter(request: Request, erzeugt_von: Union[str, None] = None, erzeugt
     return result
 
 
-@app.get("/heute/", response_model=LEMeldungen)
+@app.get("/v1/heute/", response_model=LEMeldungen)
 @limiter.limit("3/minute")
 async def today(request: Request) -> LEMeldungen:
     now = datetime.now()
@@ -150,7 +150,7 @@ async def today(request: Request) -> LEMeldungen:
     return result
 
 
-@app.get("/alle/", response_model=LEMeldungen)
+@app.get("/v1/alle/", response_model=LEMeldungen)
 @limiter.limit("1/minute")
 async def all(request: Request) -> LEMeldungen:
     cur = con.cursor()

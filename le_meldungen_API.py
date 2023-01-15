@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import sqlite3
 import uvicorn
 from typing import List, Union

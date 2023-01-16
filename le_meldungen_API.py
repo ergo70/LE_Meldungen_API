@@ -156,7 +156,7 @@ async def all(request: Request) -> LEMeldungen:
     cur = con.cursor()
 
     cur.execute(
-        """SELECT {} FROM le_meldungen;""".format(select_part))
+        """SELECT {} FROM le_meldungen ORDER BY created DESC;""".format(select_part))
 
     result = LEMeldungen(le_meldungen=[LEMeldung(PZN=r[0], ENR=r[1], Meldungsart=r[2], Beginn=r[3], Ende=r[4], Datum_der_letzten_Meldung=r[5], Art_des_Grundes=r[6], Arzneimittelbezeichnung=r[7], ATC_Code=r[8], Wirkstoffe=r[9],
                                                  Krankenhausrelevant=(r[10] == 1), Zulassungsinhaber=r[11], Telefon=r[12], EMail=r[13], Grund=r[14], Anmerkung_zum_Grund=r[15], Alternativpraeparat=r[16], Datum_der_Erstmeldung=r[17], Info_an_Fachkreise=r[18], Erzeugt_am=r[19]) for r in cur])

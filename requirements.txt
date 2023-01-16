@@ -3,3 +3,4 @@
 fastapi==0.88.0
 slowapi==0.1.7
 uvicorn==0.20.0
+selenium==4.7.2

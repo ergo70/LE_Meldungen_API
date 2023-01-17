@@ -51,8 +51,8 @@ cur = con.cursor()
 
 cur.execute("""CREATE TABLE IF NOT EXISTS le_import (col0, col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11, col12, co13,col14,col15,col16,col17,col18,col19, col20);""")
 cur.execute("""CREATE TABLE IF NOT EXISTS le_meldungen (source TEXT NOT NULL,pzn TEXT NULL,enr TEXT NULL,meldungsart TEXT NULL,beginn TEXT NOT NULL,ende TEXT NOT NULL,datum_der_letzten_meldung TEXT NULL,art_des_grundes TEXT NOT NULL,arzneimittelbezeichnung TEXT NOT NULL,atc_code TEXT NOT NULL,wirkstoffe TEXT NOT NULL,krankenhausrelevant INTEGER NOT NULL,zulassungsinhaber TEXT NOT NULL,telefon TEXT NULL,email TEXT NULL,grund TEXT NOT NULL,anmerkung_zum_grund TEXT NULL,alternativpraeparat TEXT NULL,datum_der_erstmeldung TEXT NOT NULL,info_an_fachkreise TEXT NOT NULL,created TEXT NOT NULL);""")
-#cur.execute(
-#    """CREATE INDEX IF NOT EXISTS le_meldungen_created_IDX ON le_meldungen (created DESC);""")
+cur.execute(
+    """CREATE INDEX IF NOT EXISTS le_meldungen_meldungsart_IDX ON le_meldungen (meldungsart);""")
 
 cur.executemany("""INSERT INTO le_import (col0, col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11, col12, co13,col14,col15,col16,col17,col18,col19, col20) VALUES (?,?, ?, ?,?,?,?,?,?,?,?,CASE WHEN ? = 'ja' THEN 1 ELSE 0 END,?,?,?,?,?,?,?,?,date('now'));""", to_db)
 

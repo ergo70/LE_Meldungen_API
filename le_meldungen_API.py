@@ -2,6 +2,7 @@
 
 import sqlite3
 import uvicorn
+import logging
 from typing import List, Union
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
@@ -17,6 +18,8 @@ limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="BfArM Lieferengpass-Datenbank Demo API")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+logger = logging.getLogger(__name__)
 
 
 class LEMeldung(BaseModel):
@@ -48,17 +51,9 @@ class LEMeldungen(BaseModel):
 
 @app.get("/v1/auswahl/", response_model=LEMeldungen)
 @limiter.limit("6/minute")
-async def filter(request: Request, erzeugt_von: Union[str, None] = None, erzeugt_bis: Union[str, None] = None, pzn: Union[str, None] = None, enr: Union[str, None] = None, meldungsart: Union[str, None] = None, beginn_von: Union[str, None] = None, beginn_bis: Union[str, None] = None, ende_von: Union[str, None] = None, ende_bis: Union[str, None] = None, letzte_meldung_von: Union[str, None] = None, letzte_meldung_bis: Union[str, None] = None, arzneimittel: Union[str, None] = None, atc_code: Union[str, None] = None, wirkstoffe: Union[str, None] = None, krankenhausrelevant: Union[bool, None] = None) -> LEMeldungen:
+async def filter(pzn: Union[str, None] = None, enr: Union[str, None] = None, meldungsart: Union[str, None] = None, beginn_von: Union[str, None] = None, beginn_bis: Union[str, None] = None, ende_von: Union[str, None] = None, ende_bis: Union[str, None] = None, letzte_meldung_von: Union[str, None] = None, letzte_meldung_bis: Union[str, None] = None, arzneimittel: Union[str, None] = None, atc_code: Union[str, None] = None, wirkstoffe: Union[str, None] = None, krankenhausrelevant: Union[bool, None] = None) -> LEMeldungen:
     and_part = []
     params = []
-
-    if erzeugt_von:
-        and_part.append("created >= ?")
-        params.append(erzeugt_von)
-
-    if erzeugt_bis:
-        and_part.append("created <= ?")
-        params.append(erzeugt_bis)
 
     if pzn:
         and_part.append("pzn LIKE ?")
@@ -127,27 +122,31 @@ async def filter(request: Request, erzeugt_von: Union[str, None] = None, erzeugt
     result = LEMeldungen(le_meldungen=[LEMeldung(PZN=r[0], ENR=r[1], Meldungsart=r[2], Beginn=r[3], Ende=r[4], Datum_der_letzten_Meldung=r[5], Art_des_Grundes=r[6], Arzneimittelbezeichnung=r[7], ATC_Code=r[8], Wirkstoffe=r[9],
                                                  Krankenhausrelevant=(r[10] == 1), Zulassungsinhaber=r[11], Telefon=r[12], EMail=r[13], Grund=r[14], Anmerkung_zum_Grund=r[15], Alternativpraeparat=r[16], Datum_der_Erstmeldung=r[17], Info_an_Fachkreise=r[18], Erzeugt_am=r[19]) for r in cur])
 
-    return result
-
-
-@app.get("/v1/heute/", response_model=LEMeldungen)
-@limiter.limit("3/minute")
-async def today(request: Request) -> LEMeldungen:
-    now = datetime.now()
-    today = now.strftime('%Y-%m-%d')
-
-    cur = con.cursor()
-
-    sql = """SELECT {} FROM le_meldungen WHERE created = ?;""".format(
-        select_part)
-
-    cur.execute(sql,
-                [today])
-
-    result = LEMeldungen(le_meldungen=[LEMeldung(PZN=r[0], ENR=r[1], Meldungsart=r[2], Beginn=r[3], Ende=r[4], Datum_der_letzten_Meldung=r[5], Art_des_Grundes=r[6], Arzneimittelbezeichnung=r[7], ATC_Code=r[8], Wirkstoffe=r[9],
-                                                 Krankenhausrelevant=(r[10] == 1), Zulassungsinhaber=r[11], Telefon=r[12], EMail=r[13], Grund=r[14], Anmerkung_zum_Grund=r[15], Alternativpraeparat=r[16], Datum_der_Erstmeldung=r[17], Info_an_Fachkreise=r[18], Erzeugt_am=r[19]) for r in cur])
+    logger.info("filter()")
 
     return result
+
+
+# @app.get("/v1/heute/", response_model=LEMeldungen)
+# @limiter.limit("3/minute")
+# async def today(request: Request) -> LEMeldungen:
+#     now = datetime.now()
+#     today = now.strftime('%Y-%m-%d')
+
+#     cur = con.cursor()
+
+#     sql = """SELECT {} FROM le_meldungen WHERE created = ?;""".format(
+#         select_part)
+
+#     cur.execute(sql,
+#                 [today])
+
+#     result = LEMeldungen(le_meldungen=[LEMeldung(PZN=r[0], ENR=r[1], Meldungsart=r[2], Beginn=r[3], Ende=r[4], Datum_der_letzten_Meldung=r[5], Art_des_Grundes=r[6], Arzneimittelbezeichnung=r[7], ATC_Code=r[8], Wirkstoffe=r[9],
+#                                                  Krankenhausrelevant=(r[10] == 1), Zulassungsinhaber=r[11], Telefon=r[12], EMail=r[13], Grund=r[14], Anmerkung_zum_Grund=r[15], Alternativpraeparat=r[16], Datum_der_Erstmeldung=r[17], Info_an_Fachkreise=r[18], Erzeugt_am=r[19]) for r in cur])
+
+#     logger.info("today()")
+
+#     return result
 
 
 @app.get("/v1/alle/", response_model=LEMeldungen)
@@ -156,10 +155,12 @@ async def all(request: Request) -> LEMeldungen:
     cur = con.cursor()
 
     cur.execute(
-        """SELECT {} FROM le_meldungen ORDER BY created DESC;""".format(select_part))
+        """SELECT {} FROM le_meldungen;""".format(select_part))
 
     result = LEMeldungen(le_meldungen=[LEMeldung(PZN=r[0], ENR=r[1], Meldungsart=r[2], Beginn=r[3], Ende=r[4], Datum_der_letzten_Meldung=r[5], Art_des_Grundes=r[6], Arzneimittelbezeichnung=r[7], ATC_Code=r[8], Wirkstoffe=r[9],
                                                  Krankenhausrelevant=(r[10] == 1), Zulassungsinhaber=r[11], Telefon=r[12], EMail=r[13], Grund=r[14], Anmerkung_zum_Grund=r[15], Alternativpraeparat=r[16], Datum_der_Erstmeldung=r[17], Info_an_Fachkreise=r[18], Erzeugt_am=r[19]) for r in cur])
+
+    logger.info("all()")
 
     return result
 

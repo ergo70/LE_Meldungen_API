@@ -30,7 +30,7 @@ with open('{}'.format(SOURCE), 'r', encoding="ISO-8859-1") as fin:
     for r in dr:
         row = [SOURCE]+[v for v in r.values()]
         if row[1] == '*':
-            row[1] = None
+            row[1] = 'Altdatenübernahme war nicht möglich'
         for i in [13, 14, 16, 17]:
             if row[i] in ("N/A", "-", "n.a.", "'-"):
                 row[i] = None

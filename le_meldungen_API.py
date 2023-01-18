@@ -219,5 +219,5 @@ async def filter(request: Request, pzn: Union[str, None] = None, enr: Union[str,
     return result
 
 if __name__ == "__main__":
-    uvicorn.run("le_meldungen_API:app", host='0.0.0.0', port=443, reload=True,
+    uvicorn.run("le_meldungen_API:app", host='0.0.0.0', port=8443, reload=True,
                 ssl_keyfile="", ssl_certfile="")

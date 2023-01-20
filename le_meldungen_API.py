@@ -93,7 +93,7 @@ class LEMeldungen(BaseModel):
 #     return result
 
 
-@app.get("/v1/alle/", response_model=LEMeldungen, tags=['all'])
+@app.get("/v1/le_meldungen/alle/", response_model=LEMeldungen, tags=['all'])
 @limiter.limit("1/minute")
 async def all(request: Request) -> LEMeldungen:
     cur = con.cursor()
@@ -109,7 +109,7 @@ async def all(request: Request) -> LEMeldungen:
     return result
 
 
-@app.get("/v1/alle/aktiv/", response_model=LEMeldungen, tags=['active'])
+@app.get("/v1/le_meldungen/aktiv/", response_model=LEMeldungen, tags=['active'])
 @limiter.limit("1/minute")
 async def all_active(request: Request) -> LEMeldungen:
     cur = con.cursor()
@@ -125,7 +125,7 @@ async def all_active(request: Request) -> LEMeldungen:
     return result
 
 
-@app.get("/v1/alle/geloescht/", response_model=LEMeldungen, tags=['deleted'])
+@app.get("/v1/le_meldungen/geloescht/", response_model=LEMeldungen, tags=['deleted'])
 @limiter.limit("1/minute")
 async def all_deleted(request: Request) -> LEMeldungen:
     cur = con.cursor()
@@ -141,7 +141,7 @@ async def all_deleted(request: Request) -> LEMeldungen:
     return result
 
 
-@app.get("/v1/auswahl/", response_model=LEMeldungen, tags=['filter'])
+@app.get("/v1/le_meldungen/auswahl/", response_model=LEMeldungen, tags=['filter'])
 @limiter.limit("6/minute")
 async def filter(request: Request, pzn: Union[str, None] = None, enr: Union[str, None] = None, meldungsart: Union[str, None] = None, beginn_von: Union[str, None] = None, beginn_bis: Union[str, None] = None, ende_von: Union[str, None] = None, ende_bis: Union[str, None] = None, letzte_meldung_von: Union[str, None] = None, letzte_meldung_bis: Union[str, None] = None, arzneimittel: Union[str, None] = None, atc_code: Union[str, None] = None, wirkstoffe: Union[str, None] = None, krankenhausrelevant: Union[bool, None] = None) -> LEMeldungen:
     and_part = []

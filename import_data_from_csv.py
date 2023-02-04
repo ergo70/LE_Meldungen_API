@@ -58,6 +58,7 @@ cur.executemany("""INSERT INTO le_import (col0, col1, col2, col3, col4, col5, co
 
 cur.execute("""DELETE FROM le_meldungen;""")
 cur.execute("""INSERT INTO le_meldungen SELECT * FROM le_import;""")
+cur.execute("""UPDATE le_meldungen SET telefon = NULL, email = NULL;""")
 cur.execute("""DROP TABLE IF EXISTS le_import;""")
 
 con.commit()

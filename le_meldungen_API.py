@@ -39,7 +39,7 @@ con = sqlite3.connect('file:./LEMeldungen.db?mode=ro', uri=True)
 
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="BfArM Lieferengpass-Datenbank Demo API",
-              description="FastAPI based API for the BfArM Lieferengpass Database", version="1.0.0", openapi_tags=tags_metadata)
+              description="FastAPI based API for the BfArM Lieferengpass Database at https://anwendungen.pharmnet-bund.de/lieferengpassmeldungen/faces/public/meldungen.xhtml", version="1.0.0", openapi_tags=tags_metadata)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 

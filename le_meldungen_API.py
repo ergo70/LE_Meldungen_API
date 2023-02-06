@@ -5,6 +5,7 @@ import uvicorn
 import logging
 from typing import List, Union
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel
 from slowapi.errors import RateLimitExceeded
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -38,10 +39,13 @@ logger = logging.getLogger(__name__)
 con = sqlite3.connect('file:./LEMeldungen.db?mode=ro', uri=True)
 
 limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(title="BfArM Lieferengpass-Datenbank Demo API",
               description="FastAPI based API for the BfArM Lieferengpass Database at https://anwendungen.pharmnet-bund.de/lieferengpassmeldungen/faces/public/meldungen.xhtml", version="1.0.0", openapi_tags=tags_metadata)
+
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 
 class LEMeldung(BaseModel):
@@ -64,45 +68,32 @@ class LEMeldung(BaseModel):
     Alternativpraeparat: Union[str, None] = None
     Datum_der_Erstmeldung: str
     Info_an_Fachkreise: str
-    Erzeugt_am: str
+    #Erzeugt_am: str
 
 
 class LEMeldungen(BaseModel):
-    le_meldungen: List[LEMeldung] = []
-
-
-# @app.get("/v1/heute/", response_model=LEMeldungen)
-# @limiter.limit("3/minute")
-# async def today(request: Request) -> LEMeldungen:
-#     now = datetime.now()
-#     today = now.strftime('%Y-%m-%d')
-
-#     cur = con.cursor()
-
-#     sql = """SELECT {} FROM le_meldungen WHERE created = ?;""".format(
-#         select_part)
-
-#     cur.execute(sql,
-#                 [today])
-
-#     result = LEMeldungen(le_meldungen=[LEMeldung(PZN=r[0], ENR=r[1], Meldungsart=r[2], Beginn=r[3], Ende=r[4], Datum_der_letzten_Meldung=r[5], Art_des_Grundes=r[6], Arzneimittelbezeichnung=r[7], ATC_Code=r[8], Wirkstoffe=r[9],
-#                                                  Krankenhausrelevant=(r[10] == 1), Zulassungsinhaber=r[11], Telefon=r[12], EMail=r[13], Grund=r[14], Anmerkung_zum_Grund=r[15], Alternativpraeparat=r[16], Datum_der_Erstmeldung=r[17], Info_an_Fachkreise=r[18], Erzeugt_am=r[19]) for r in cur])
-
-#     logger.info("today()")
-
-#     return result
+    Daten_aktualisiert_am: str
+    Anzahl_Datensaetze: int
+    LE_Meldungen: List[LEMeldung] = []
 
 
 @app.get("/v1/le_meldungen/alle/", response_model=LEMeldungen, tags=['all'])
 @limiter.limit("1/minute")
 async def all(request: Request) -> LEMeldungen:
+    daa = None
+    result = []
     cur = con.cursor()
 
     cur.execute(
         """SELECT {} FROM le_meldungen;""".format(select_part))
 
-    result = LEMeldungen(le_meldungen=[LEMeldung(PZN=r[0], ENR=r[1], Meldungsart=r[2], Beginn=r[3], Ende=r[4], Datum_der_letzten_Meldung=r[5], Art_des_Grundes=r[6], Arzneimittelbezeichnung=r[7], ATC_Code=r[8], Wirkstoffe=r[9],
-                                                 Krankenhausrelevant=(r[10] == 1), Zulassungsinhaber=r[11], Grund=r[14], Anmerkung_zum_Grund=r[15], Alternativpraeparat=r[16], Datum_der_Erstmeldung=r[17], Info_an_Fachkreise=r[18], Erzeugt_am=r[19]) for r in cur])
+    for r in cur:
+        daa = r[19]
+        result += (LEMeldung(PZN=r[0], ENR=r[1], Meldungsart=r[2], Beginn=r[3], Ende=r[4], Datum_der_letzten_Meldung=r[5], Art_des_Grundes=r[6], Arzneimittelbezeichnung=r[7], ATC_Code=r[8], Wirkstoffe=r[9],
+                             Krankenhausrelevant=(r[10] == 1), Zulassungsinhaber=r[11], Grund=r[14], Anmerkung_zum_Grund=r[15], Alternativpraeparat=r[16], Datum_der_Erstmeldung=r[17], Info_an_Fachkreise=r[18]),)
+
+    result = LEMeldungen(Daten_aktualisiert_am=daa,
+                         Anzahl_Datensaetze=len(result), LE_Meldungen=result)
 
     logger.info("all()")
 
@@ -112,13 +103,20 @@ async def all(request: Request) -> LEMeldungen:
 @app.get("/v1/le_meldungen/aktiv/", response_model=LEMeldungen, tags=['active'])
 @limiter.limit("1/minute")
 async def all_active(request: Request) -> LEMeldungen:
+    daa = None
+    result = []
     cur = con.cursor()
 
     cur.execute(
         """SELECT {} FROM le_meldungen WHERE meldungsart != 'Löschmeldung';""".format(select_part))
 
-    result = LEMeldungen(le_meldungen=[LEMeldung(PZN=r[0], ENR=r[1], Meldungsart=r[2], Beginn=r[3], Ende=r[4], Datum_der_letzten_Meldung=r[5], Art_des_Grundes=r[6], Arzneimittelbezeichnung=r[7], ATC_Code=r[8], Wirkstoffe=r[9],
-                                                 Krankenhausrelevant=(r[10] == 1), Zulassungsinhaber=r[11], Grund=r[14], Anmerkung_zum_Grund=r[15], Alternativpraeparat=r[16], Datum_der_Erstmeldung=r[17], Info_an_Fachkreise=r[18], Erzeugt_am=r[19]) for r in cur])
+    for r in cur:
+        daa = r[19]
+        result += (LEMeldung(PZN=r[0], ENR=r[1], Meldungsart=r[2], Beginn=r[3], Ende=r[4], Datum_der_letzten_Meldung=r[5], Art_des_Grundes=r[6], Arzneimittelbezeichnung=r[7], ATC_Code=r[8], Wirkstoffe=r[9],
+                             Krankenhausrelevant=(r[10] == 1), Zulassungsinhaber=r[11], Grund=r[14], Anmerkung_zum_Grund=r[15], Alternativpraeparat=r[16], Datum_der_Erstmeldung=r[17], Info_an_Fachkreise=r[18]),)
+
+    result = LEMeldungen(Daten_aktualisiert_am=daa,
+                         Anzahl_Datensaetze=len(result), LE_Meldungen=result)
 
     logger.info("all_active()")
 
@@ -128,13 +126,20 @@ async def all_active(request: Request) -> LEMeldungen:
 @app.get("/v1/le_meldungen/geloescht/", response_model=LEMeldungen, tags=['deleted'])
 @limiter.limit("1/minute")
 async def all_deleted(request: Request) -> LEMeldungen:
+    daa = None
+    result = []
     cur = con.cursor()
 
     cur.execute(
         """SELECT {} FROM le_meldungen WHERE meldungsart = 'Löschmeldung';""".format(select_part))
 
-    result = LEMeldungen(le_meldungen=[LEMeldung(PZN=r[0], ENR=r[1], Meldungsart=r[2], Beginn=r[3], Ende=r[4], Datum_der_letzten_Meldung=r[5], Art_des_Grundes=r[6], Arzneimittelbezeichnung=r[7], ATC_Code=r[8], Wirkstoffe=r[9],
-                                                 Krankenhausrelevant=(r[10] == 1), Zulassungsinhaber=r[11], Grund=r[14], Anmerkung_zum_Grund=r[15], Alternativpraeparat=r[16], Datum_der_Erstmeldung=r[17], Info_an_Fachkreise=r[18], Erzeugt_am=r[19]) for r in cur])
+    for r in cur:
+        daa = r[19]
+        result += (LEMeldung(PZN=r[0], ENR=r[1], Meldungsart=r[2], Beginn=r[3], Ende=r[4], Datum_der_letzten_Meldung=r[5], Art_des_Grundes=r[6], Arzneimittelbezeichnung=r[7], ATC_Code=r[8], Wirkstoffe=r[9],
+                             Krankenhausrelevant=(r[10] == 1), Zulassungsinhaber=r[11], Grund=r[14], Anmerkung_zum_Grund=r[15], Alternativpraeparat=r[16], Datum_der_Erstmeldung=r[17], Info_an_Fachkreise=r[18]),)
+
+    result = LEMeldungen(Daten_aktualisiert_am=daa,
+                         Anzahl_Datensaetze=len(result), LE_Meldungen=result)
 
     logger.info("all_deleted()")
 
@@ -144,8 +149,10 @@ async def all_deleted(request: Request) -> LEMeldungen:
 @app.get("/v1/le_meldungen/auswahl/", response_model=LEMeldungen, tags=['filter'])
 @limiter.limit("6/minute")
 async def filter(request: Request, pzn: Union[str, None] = None, enr: Union[str, None] = None, meldungsart: Union[str, None] = None, beginn_von: Union[str, None] = None, beginn_bis: Union[str, None] = None, ende_von: Union[str, None] = None, ende_bis: Union[str, None] = None, letzte_meldung_von: Union[str, None] = None, letzte_meldung_bis: Union[str, None] = None, arzneimittel: Union[str, None] = None, atc_code: Union[str, None] = None, wirkstoffe: Union[str, None] = None, krankenhausrelevant: Union[bool, None] = None) -> LEMeldungen:
+    daa = None
     and_part = []
     params = []
+    result = []
 
     if pzn:
         and_part.append("pzn LIKE ?")
@@ -211,13 +218,18 @@ async def filter(request: Request, pzn: Union[str, None] = None, enr: Union[str,
     cur.execute(sql,
                 params)
 
-    result = LEMeldungen(le_meldungen=[LEMeldung(PZN=r[0], ENR=r[1], Meldungsart=r[2], Beginn=r[3], Ende=r[4], Datum_der_letzten_Meldung=r[5], Art_des_Grundes=r[6], Arzneimittelbezeichnung=r[7], ATC_Code=r[8], Wirkstoffe=r[9],
-                                                 Krankenhausrelevant=(r[10] == 1), Zulassungsinhaber=r[11], Grund=r[14], Anmerkung_zum_Grund=r[15], Alternativpraeparat=r[16], Datum_der_Erstmeldung=r[17], Info_an_Fachkreise=r[18], Erzeugt_am=r[19]) for r in cur])
+    for r in cur:
+        daa = r[19]
+        result += (LEMeldung(PZN=r[0], ENR=r[1], Meldungsart=r[2], Beginn=r[3], Ende=r[4], Datum_der_letzten_Meldung=r[5], Art_des_Grundes=r[6], Arzneimittelbezeichnung=r[7], ATC_Code=r[8], Wirkstoffe=r[9],
+                             Krankenhausrelevant=(r[10] == 1), Zulassungsinhaber=r[11], Grund=r[14], Anmerkung_zum_Grund=r[15], Alternativpraeparat=r[16], Datum_der_Erstmeldung=r[17], Info_an_Fachkreise=r[18]),)
+
+    result = LEMeldungen(Daten_aktualisiert_am=daa,
+                         Anzahl_Datensaetze=len(result), LE_Meldungen=result)
 
     logger.info("filter()")
 
     return result
 
 if __name__ == "__main__":
-    uvicorn.run("le_meldungen_API:app", host='0.0.0.0', port=8443, reload=True,
+    uvicorn.run("le_meldungen_API:app", host='0.0.0.0', port=8443, reload=False,
                 ssl_keyfile="", ssl_certfile="")

@@ -5,6 +5,8 @@ import sqlite3
 from time import sleep
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as Ec
 from selenium.webdriver.firefox.options import Options
 from glob import glob
 from os import remove
@@ -12,14 +14,14 @@ from os import remove
 options = Options()
 options.headless = True
 driver = webdriver.Firefox(options=options, executable_path=r'./geckodriver')
+wait = WebDriverWait(driver, 5)
 
 driver.get(
     "https://anwendungen.pharmnet-bund.de/lieferengpassmeldungen/faces/public/meldungen.xhtml")
 assert "Lieferengpassmeldungen" in driver.title
-elem = driver.find_element(By.LINK_TEXT, "Alle Lieferengpass-Meldungen")
+elem = wait.until(Ec.element_to_be_clickable((By.LINK_TEXT, "Alle Lieferengpass-Meldungen")))
 elem.click()
-sleep(1)
-elem = driver.find_element(By.NAME, "meldungenForm:j_idt175")
+elem = wait.until(Ec.element_to_be_clickable((By.XPATH, "//input[@value='Als CSV Speichern']")))
 elem.click()
 sleep(30)
 driver.close()

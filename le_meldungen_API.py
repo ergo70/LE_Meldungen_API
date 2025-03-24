@@ -36,7 +36,7 @@ tags_metadata = [
 ]
 
 # Arzneimittlbezeichnung is actually a typo in the CSV file
-SELECT_PART = """"PZN","ENR","Bearbeitungsnummer","Referenzierte Erstmeldung","Meldungsart","Beginn","Ende","Datum der letzten Meldung","Art des Grundes","Arzneimittlbezeichnung","Atc Code","Wirkstoffe","Krankenhausrelevant","Zulassungsinhaber","Telefon","E-Mail","Grund","Anm. zum Grund","Alternativpräparat","Datum der Erstmeldung","Info an Fachkreise","Darreichungsform\""""
+SELECT_PART = """"PZN","ENR","Bearbeitungsnummer","Referenzierte Erstmeldung","Meldungsart","Beginn","Ende","Datum der letzten Meldung","Art des Grundes","Arzneimittlbezeichnung" AS "Arzneimittelbezeichnung","Atc Code","Wirkstoffe","Krankenhausrelevant","Zulassungsinhaber","Telefon","E-Mail","Grund","Anm. zum Grund","Alternativpräparat","Datum der Erstmeldung","Info an Fachkreise","Darreichungsform\""""
 
 logger = logging.getLogger(__name__)
 

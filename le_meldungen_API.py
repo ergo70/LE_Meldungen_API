@@ -1,42 +1,47 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
-import sqlite3
+"""
+This is the missing API for the BfArM Lieferengpass Database: https://anwendungen.pharmnet-bund.de/lieferengpassmeldungen/faces/public/meldungen.xhtml
+
+Usage: uvicorn le_meldungen_API:app
+"""
+
+import duckdb
 import uvicorn
 import logging
-from typing import List, Union
-from fastapi import FastAPI, HTTPException, Request
+from datetime import date
+from typing import List, Optional
+from fastapi import FastAPI, Request
 from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel
 from slowapi.errors import RateLimitExceeded
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
-#from datetime import datetime
+
+
+__author__ = "Ernst-Georg Schmid"
+__copyright__ = "Copyright 2023, 2025 Ernst-Georg Schmid"
+__license__ = "MIT"
+__version__ = "1.0.0"
+__maintainer__ = "Ernst-Georg Schmid"
+__status__ = "Demo"
+
 
 tags_metadata = [
     {
-        "name": "all",
-        "description": "Alle Lieferengpassmeldungen.",
-    },
-    {
-        "name": "active",
-        "description": "Nur aktive Lieferengpassmeldungen.",
-    },
-    {
-        "name": "deleted",
-        "description": "Nur gelöschte Lieferengpassmeldungen.",
-    },
-    {
         "name": "filter",
         "description": "Individuell gefilterte Lieferengpassmeldungen.",
-    },
+    }
 ]
 
-
-select_part = """pzn, enr, meldungsart, beginn, ende, datum_der_letzten_meldung, art_des_grundes, arzneimittelbezeichnung, atc_code, wirkstoffe, krankenhausrelevant, zulassungsinhaber, telefon, email, grund, anmerkung_zum_grund, alternativpraeparat, datum_der_erstmeldung, info_an_fachkreise, created"""
+# Arzneimittlbezeichnung is actually a typo in the CSV file
+SELECT_PART = """"PZN","ENR","Bearbeitungsnummer","Referenzierte Erstmeldung","Meldungsart","Beginn","Ende","Datum der letzten Meldung","Art des Grundes","Arzneimittlbezeichnung","Atc Code","Wirkstoffe","Krankenhausrelevant","Zulassungsinhaber","Telefon","E-Mail","Grund","Anm. zum Grund","Alternativpräparat","Datum der Erstmeldung","Info an Fachkreise","Darreichungsform\""""
 
 logger = logging.getLogger(__name__)
 
-con = sqlite3.connect('file:./LEMeldungen.db?mode=ro', uri=True)
+con = duckdb.connect(':memory:')
+le_meldungen_rel = con.read_csv("""le_meldungen.csv""", sep=';', header=True)
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -49,187 +54,114 @@ app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 
 class LEMeldung(BaseModel):
-    PZN: Union[str, None] = None
-    ENR: Union[str, None] = None
-    Meldungsart: Union[str, None] = None
-    Beginn: str
-    Ende: str
-    Datum_der_letzen_Meldung: Union[str, None] = None
-    Art_des_Grundes: str
-    Arzneimittelbezeichnung: str
-    ATC_Code: str
-    Wirkstoffe: str
-    Krankenhausrelevant: bool
-    Zulassungsinhaber: str
-    #Telefon: Union[str, None] = None
-    #EMail: Union[str, None] = None
-    Grund: str
-    Anmerkung_zum_Grund: Union[str, None] = None
-    Alternativpraeparat: Union[str, None] = None
-    Datum_der_Erstmeldung: str
-    Info_an_Fachkreise: str
-    #Erzeugt_am: str
+    PZN: str = None
+    ENR: List[str] = None
+    Bearbeitungsnummer: str = None
+    Referenzierte_Erstmeldung: str = None
+    Meldungsart: str = None
+    Beginn: date = None
+    Ende: date = None
+    Datum_der_letzten_Meldung: date = None
+    Art_des_Grundes: str = None
+    Arzneimittelbezeichnung: str = None
+    ATC_Code: str = None
+    Wirkstoffe: str = None
+    Krankenhausrelevant: str = None
+    Zulassungsinhaber: str = None
+    Telefon: str = None
+    EMail: str = None
+    Grund: str = None
+    Anmerkung_zum_Grund: str = None
+    Alternativpraeparat: str = None
+    Datum_der_Erstmeldung: date = None
+    Info_an_Fachkreise: str = None
+    Darreichungsform: List[str] = None
 
 
 class LEMeldungen(BaseModel):
-    Daten_aktualisiert_am: str
     Anzahl_Datensaetze: int
     LE_Meldungen: List[LEMeldung] = []
 
 
-@app.get("/v1/le_meldungen/alle/", response_model=LEMeldungen, tags=['all'])
+@app.get("/api/v1/le_meldungen/filter/", response_model=LEMeldungen, tags=['filter'])
 @limiter.limit("1/minute")
-async def all(request: Request) -> LEMeldungen:
-    daa = None
-    result = []
-    cur = con.cursor()
-
-    cur.execute(
-        """SELECT {} FROM le_meldungen;""".format(select_part))
-
-    for r in cur:
-        daa = r[19]
-        result += (LEMeldung(PZN=r[0], ENR=r[1], Meldungsart=r[2], Beginn=r[3], Ende=r[4], Datum_der_letzten_Meldung=r[5], Art_des_Grundes=r[6], Arzneimittelbezeichnung=r[7], ATC_Code=r[8], Wirkstoffe=r[9],
-                             Krankenhausrelevant=(r[10] == 1), Zulassungsinhaber=r[11], Grund=r[14], Anmerkung_zum_Grund=r[15], Alternativpraeparat=r[16], Datum_der_Erstmeldung=r[17], Info_an_Fachkreise=r[18]),)
-
-    result = LEMeldungen(Daten_aktualisiert_am=daa,
-                         Anzahl_Datensaetze=len(result), LE_Meldungen=result)
-
-    logger.info("all()")
-
-    return result
-
-
-@app.get("/v1/le_meldungen/aktiv/", response_model=LEMeldungen, tags=['active'])
-@limiter.limit("1/minute")
-async def all_active(request: Request) -> LEMeldungen:
-    daa = None
-    result = []
-    cur = con.cursor()
-
-    cur.execute(
-        """SELECT {} FROM le_meldungen WHERE meldungsart != 'Löschmeldung';""".format(select_part))
-
-    for r in cur:
-        daa = r[19]
-        result += (LEMeldung(PZN=r[0], ENR=r[1], Meldungsart=r[2], Beginn=r[3], Ende=r[4], Datum_der_letzten_Meldung=r[5], Art_des_Grundes=r[6], Arzneimittelbezeichnung=r[7], ATC_Code=r[8], Wirkstoffe=r[9],
-                             Krankenhausrelevant=(r[10] == 1), Zulassungsinhaber=r[11], Grund=r[14], Anmerkung_zum_Grund=r[15], Alternativpraeparat=r[16], Datum_der_Erstmeldung=r[17], Info_an_Fachkreise=r[18]),)
-
-    result = LEMeldungen(Daten_aktualisiert_am=daa,
-                         Anzahl_Datensaetze=len(result), LE_Meldungen=result)
-
-    logger.info("all_active()")
-
-    return result
-
-
-@app.get("/v1/le_meldungen/geloescht/", response_model=LEMeldungen, tags=['deleted'])
-@limiter.limit("1/minute")
-async def all_deleted(request: Request) -> LEMeldungen:
-    daa = None
-    result = []
-    cur = con.cursor()
-
-    cur.execute(
-        """SELECT {} FROM le_meldungen WHERE meldungsart = 'Löschmeldung';""".format(select_part))
-
-    for r in cur:
-        daa = r[19]
-        result += (LEMeldung(PZN=r[0], ENR=r[1], Meldungsart=r[2], Beginn=r[3], Ende=r[4], Datum_der_letzten_Meldung=r[5], Art_des_Grundes=r[6], Arzneimittelbezeichnung=r[7], ATC_Code=r[8], Wirkstoffe=r[9],
-                             Krankenhausrelevant=(r[10] == 1), Zulassungsinhaber=r[11], Grund=r[14], Anmerkung_zum_Grund=r[15], Alternativpraeparat=r[16], Datum_der_Erstmeldung=r[17], Info_an_Fachkreise=r[18]),)
-
-    result = LEMeldungen(Daten_aktualisiert_am=daa,
-                         Anzahl_Datensaetze=len(result), LE_Meldungen=result)
-
-    logger.info("all_deleted()")
-
-    return result
-
-
-@app.get("/v1/le_meldungen/auswahl/", response_model=LEMeldungen, tags=['filter'])
-@limiter.limit("6/minute")
-async def filter(request: Request, pzn: Union[str, None] = None, enr: Union[str, None] = None, meldungsart: Union[str, None] = None, beginn_von: Union[str, None] = None, beginn_bis: Union[str, None] = None, ende_von: Union[str, None] = None, ende_bis: Union[str, None] = None, letzte_meldung_von: Union[str, None] = None, letzte_meldung_bis: Union[str, None] = None, arzneimittel: Union[str, None] = None, atc_code: Union[str, None] = None, wirkstoffe: Union[str, None] = None, krankenhausrelevant: Union[bool, None] = None) -> LEMeldungen:
-    daa = None
+async def filter(request: Request, pzn: Optional[str] = None, enr: Optional[str] = None, meldungsart: Optional[str] = None, beginn_von: Optional[date] = None, beginn_bis: Optional[date] = None, ende_von: Optional[date] = None, ende_bis: Optional[date] = None, letzte_meldung_von: Optional[date] = None, letzte_meldung_bis: Optional[date] = None, arzneimittelbezeichnung: Optional[str] = None, atc_code: Optional[str] = None, wirkstoffe: Optional[str] = None, krankenhausrelevant: Optional[str] = None, info_an_fachkreise: Optional[str] = None) -> LEMeldungen:
     and_part = []
     params = []
     result = []
 
     if pzn:
-        and_part.append("pzn LIKE ?")
+        and_part.append(""""PZN" ILIKE ?""")
         params.append('%'+pzn+'%')
 
     if enr:
-        and_part.append("enr LIKE ?")
+        and_part.append(""""ENR" ILIKE ?""")
         params.append('%'+enr+'%')
 
     if meldungsart:
-        and_part.append("meldungsart LIKE ?")
+        and_part.append(""""Meldungsart" ILIKE ?""")
         params.append('%'+meldungsart+'%')
 
     if beginn_von:
-        and_part.append("beginn >= ?")
+        and_part.append(""""Beginn" >= ?""")
         params.append(beginn_von)
 
     if beginn_bis:
-        and_part.append("beginn <= ?")
+        and_part.append(""""Beginn" <= ?""")
         params.append(beginn_bis)
 
     if ende_von:
-        and_part.append("ende >= ?")
+        and_part.append(""""Ende" >= ?""")
         params.append(ende_von)
 
     if ende_bis:
-        and_part.append("ende <= ?")
+        and_part.append(""""Ende" <= ?""")
         params.append(ende_bis)
 
     if letzte_meldung_von:
-        and_part.append("datum_der_letzten_meldung >= ?")
+        and_part.append(""""Datum der letzten Meldung" >= ?""")
         params.append(letzte_meldung_von)
 
     if letzte_meldung_bis:
-        and_part.append("datum_der_letzten_meldung <= ?")
+        and_part.append(""""Datum der letzten Meldung" <= ?""")
         params.append(letzte_meldung_bis)
 
     if arzneimittel:
-        and_part.append("arzneimittelbezeichnung LIKE ?")
-        params.append('%'+arzneimittel+'%')
+        and_part.append(""""Arzneimittelbezeichnung" ILIKE ?""")
+        params.append('%'+arzneimittelbezeichnung+'%')
 
     if atc_code:
-        and_part.append("atc_code LIKE ?")
+        and_part.append(""""Atc Code" ILIKE ?""")
         params.append('%'+atc_code+'%')
 
     if wirkstoffe:
-        and_part.append("wirkstoffe LIKE ?")
+        and_part.append(""""Wirkstoffe" ILIKE ?""")
         params.append('%'+wirkstoffe+'%')
 
-    if krankenhausrelevant is not None:
-        and_part.append("krankenhausrelevant = ?")
-        params.append(1 if krankenhausrelevant else 0)
+    if krankenhausrelevant:
+        and_part.append(""""Krankenhausrelevant" ILIKE ?""")
+        params.append('%'+krankenhausrelevant+'%')
+
+    if info_an_fachkreise:
+        and_part.append(""""Info an Fachkreise" ILIKE ?""")
+        params.append('%'+info_an_fachkreise+'%')
 
     if not and_part:
-        raise HTTPException(
-            status_code=400, detail="No query parameters given.")
+        and_part.append("TRUE")
 
-    cur = con.cursor()
+    for r in con.execute("""SELECT {} FROM le_meldungen_rel WHERE {};""".format(
+            SELECT_PART, ' AND '.join(and_part)), params).fetchall():
 
-    sql = """SELECT {} FROM le_meldungen WHERE {};""".format(
-        select_part, ' AND '.join(and_part))
+        result += (LEMeldung(PZN=r[0], ENR=r[1].replace(' ', '').split(',') if r[1] else None, Bearbeitungsnummer=r[2], Referenzierte_Erstmeldung=r[3], Meldungsart=r[4], Beginn=r[5], Ende=r[6], Datum_der_letzten_Meldung=r[7], Art_des_Grundes=r[8], Arzneimittelbezeichnung=r[9], ATC_Code=r[10], Wirkstoffe=r[11],
+                             Krankenhausrelevant=r[12], Zulassungsinhaber=r[13], Telefon='***', EMail='***', Grund=r[16], Anmerkung_zum_Grund=r[17], Alternativpraeparat=r[18], Datum_der_Erstmeldung=r[19], Info_an_Fachkreise=r[20], Darreichungsform=r[21].replace(' ', '').split(',') if r[21] else None),)
 
-    cur.execute(sql,
-                params)
-
-    for r in cur:
-        daa = r[19]
-        result += (LEMeldung(PZN=r[0], ENR=r[1], Meldungsart=r[2], Beginn=r[3], Ende=r[4], Datum_der_letzten_Meldung=r[5], Art_des_Grundes=r[6], Arzneimittelbezeichnung=r[7], ATC_Code=r[8], Wirkstoffe=r[9],
-                             Krankenhausrelevant=(r[10] == 1), Zulassungsinhaber=r[11], Grund=r[14], Anmerkung_zum_Grund=r[15], Alternativpraeparat=r[16], Datum_der_Erstmeldung=r[17], Info_an_Fachkreise=r[18]),)
-
-    result = LEMeldungen(Daten_aktualisiert_am=daa,
-                         Anzahl_Datensaetze=len(result), LE_Meldungen=result)
+    result = LEMeldungen(
+        Anzahl_Datensaetze=len(result), LE_Meldungen=result)
 
     logger.info("filter()")
 
     return result
 
 if __name__ == "__main__":
-    uvicorn.run("le_meldungen_API:app", host='0.0.0.0', port=8443, reload=False,
-                ssl_keyfile="", ssl_certfile="")
+    uvicorn.run("le_meldungen_API:app", host='127.0.0.1',
+                port=8080, reload=True)

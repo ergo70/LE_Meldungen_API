@@ -126,7 +126,7 @@ async def filter(request: Request, pzn: Optional[str] = None, enr: Optional[str]
         and_part.append(""""Datum der letzten Meldung" <= ?""")
         params.append(letzte_meldung_bis)
 
-    if arzneimittel:
+    if arzneimittelbezeichnung:
         and_part.append(""""Arzneimittelbezeichnung" ILIKE ?""")
         params.append('%'+arzneimittelbezeichnung+'%')
 

@@ -83,7 +83,7 @@ class LEMeldungen(BaseModel):
     LE_Meldungen: List[LEMeldung] = []
 
 
-@app.get("/api/v1/le_meldungen/filter/", response_model=LEMeldungen, tags=['filter'])
+@app.get("/api/v1/le_meldungen/filter", response_model=LEMeldungen, tags=['filter'])
 @limiter.limit("1/minute")
 async def filter(request: Request, pzn: Optional[str] = None, enr: Optional[str] = None, meldungsart: Optional[str] = None, beginn_von: Optional[date] = None, beginn_bis: Optional[date] = None, ende_von: Optional[date] = None, ende_bis: Optional[date] = None, letzte_meldung_von: Optional[date] = None, letzte_meldung_bis: Optional[date] = None, arzneimittelbezeichnung: Optional[str] = None, atc_code: Optional[str] = None, wirkstoffe: Optional[str] = None, krankenhausrelevant: Optional[str] = None, info_an_fachkreise: Optional[str] = None) -> LEMeldungen:
     and_part = []

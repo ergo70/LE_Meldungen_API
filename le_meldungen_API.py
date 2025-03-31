@@ -23,7 +23,7 @@ from slowapi.util import get_remote_address
 __author__ = "Ernst-Georg Schmid"
 __copyright__ = "Copyright 2023, 2025 Ernst-Georg Schmid"
 __license__ = "MIT"
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 __maintainer__ = "Ernst-Georg Schmid"
 __status__ = "Demo"
 
@@ -36,7 +36,7 @@ tags_metadata = [
 ]
 
 # Arzneimittlbezeichnung is actually a typo in the CSV file
-SELECT_PART = """"PZN","ENR","Bearbeitungsnummer","Referenzierte Erstmeldung","Meldungsart","Beginn","Ende","Datum der letzten Meldung","Art des Grundes","Arzneimittlbezeichnung" AS "Arzneimittelbezeichnung","Atc Code","Wirkstoffe","Krankenhausrelevant","Zulassungsinhaber","Telefon","E-Mail","Grund","Anm. zum Grund","Alternativpräparat","Datum der Erstmeldung","Info an Fachkreise","Darreichungsform\""""
+SELECT_PART = """"PZN","ENR","Bearbeitungsnummer","Referenzierte Erstmeldung","Meldungsart","Beginn","Ende","Datum der letzten Meldung","Art des Grundes","Arzneimittlbezeichnung" AS "AM-Bezeichnung","Atc Code" AS "ATC","Wirkstoffe","Krankenhausrelevant" AS "KKH-relevant","Zulassungsinhaber","Telefon","E-Mail","Grund","Anm. zum Grund","Alternativpräparat","Datum der Erstmeldung","Info an Fachkreise","Darreichungsform\""""
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ le_meldungen_rel = con.read_csv("""le_meldungen.csv""", sep=';', header=True)
 limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(title="BfArM Lieferengpass-Datenbank Demo API",
-              description="FastAPI based API for the BfArM Lieferengpass Database at https://anwendungen.pharmnet-bund.de/lieferengpassmeldungen/faces/public/meldungen.xhtml", version="1.0.0", openapi_tags=tags_metadata)
+              description="FastAPI based API for the BfArM Lieferengpass Database at https://anwendungen.pharmnet-bund.de/lieferengpassmeldungen/faces/public/meldungen.xhtml", version=__version__, openapi_tags=tags_metadata)
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -63,10 +63,10 @@ class LEMeldung(BaseModel):
     Ende: date = None
     Datum_der_letzten_Meldung: date = None
     Art_des_Grundes: str = None
-    Arzneimittelbezeichnung: str = None
-    ATC_Code: str = None
+    AM_Bezeichnung: str = None
+    ATC: str = None
     Wirkstoffe: str = None
-    Krankenhausrelevant: str = None
+    KKH_relevant: str = None
     Zulassungsinhaber: str = None
     Telefon: str = None
     EMail: str = None
@@ -84,8 +84,8 @@ class LEMeldungen(BaseModel):
 
 
 @app.get("/api/v1/le_meldungen/filter", response_model=LEMeldungen, tags=['filter'])
-@limiter.limit("1/minute")
-async def filter(request: Request, pzn: Optional[str] = None, enr: Optional[str] = None, meldungsart: Optional[str] = None, beginn_von: Optional[date] = None, beginn_bis: Optional[date] = None, ende_von: Optional[date] = None, ende_bis: Optional[date] = None, letzte_meldung_von: Optional[date] = None, letzte_meldung_bis: Optional[date] = None, arzneimittelbezeichnung: Optional[str] = None, atc_code: Optional[str] = None, wirkstoffe: Optional[str] = None, krankenhausrelevant: Optional[str] = None, info_an_fachkreise: Optional[str] = None) -> LEMeldungen:
+@limiter.limit("100/minute")
+async def filter(request: Request, pzn: Optional[str] = None, enr: Optional[str] = None, meldungsart: Optional[str] = None, beginn_ab: Optional[date] = None, beginn_bis: Optional[date] = None, ende_ab: Optional[date] = None, ende_bis: Optional[date] = None, letzte_meldung_ab: Optional[date] = None, letzte_meldung_bis: Optional[date] = None, am_bezeichnung: Optional[str] = None, atc: Optional[str] = None, wirkstoffe: Optional[str] = None, kkh_relevant: Optional[str] = None) -> LEMeldungen:
     and_part = []
     params = []
     result = []
@@ -102,49 +102,45 @@ async def filter(request: Request, pzn: Optional[str] = None, enr: Optional[str]
         and_part.append(""""Meldungsart" ILIKE ?""")
         params.append('%'+meldungsart+'%')
 
-    if beginn_von:
+    if beginn_ab:
         and_part.append(""""Beginn" >= ?""")
-        params.append(beginn_von)
+        params.append(beginn_ab)
 
     if beginn_bis:
         and_part.append(""""Beginn" <= ?""")
         params.append(beginn_bis)
 
-    if ende_von:
+    if ende_ab:
         and_part.append(""""Ende" >= ?""")
-        params.append(ende_von)
+        params.append(ende_ab)
 
     if ende_bis:
         and_part.append(""""Ende" <= ?""")
         params.append(ende_bis)
 
-    if letzte_meldung_von:
+    if letzte_meldung_ab:
         and_part.append(""""Datum der letzten Meldung" >= ?""")
-        params.append(letzte_meldung_von)
+        params.append(letzte_meldung_ab)
 
     if letzte_meldung_bis:
         and_part.append(""""Datum der letzten Meldung" <= ?""")
         params.append(letzte_meldung_bis)
 
-    if arzneimittelbezeichnung:
-        and_part.append(""""Arzneimittelbezeichnung" ILIKE ?""")
-        params.append('%'+arzneimittelbezeichnung+'%')
+    if am_bezeichnung:
+        and_part.append(""""AM-Bezeichnung" ILIKE ?""")
+        params.append('%'+am_bezeichnung+'%')
 
-    if atc_code:
-        and_part.append(""""Atc Code" ILIKE ?""")
-        params.append('%'+atc_code+'%')
+    if atc:
+        and_part.append(""""ATC" ILIKE ?""")
+        params.append('%'+atc+'%')
 
     if wirkstoffe:
         and_part.append(""""Wirkstoffe" ILIKE ?""")
         params.append('%'+wirkstoffe+'%')
 
-    if krankenhausrelevant:
-        and_part.append(""""Krankenhausrelevant" ILIKE ?""")
-        params.append('%'+krankenhausrelevant+'%')
-
-    if info_an_fachkreise:
-        and_part.append(""""Info an Fachkreise" ILIKE ?""")
-        params.append('%'+info_an_fachkreise+'%')
+    if kkh_relevant:
+        and_part.append(""""KKH-relevant" ILIKE ?""")
+        params.append('%'+kkh_relevant+'%')
 
     if not and_part:
         and_part.append("TRUE")
@@ -152,8 +148,8 @@ async def filter(request: Request, pzn: Optional[str] = None, enr: Optional[str]
     for r in con.execute("""SELECT {} FROM le_meldungen_rel WHERE {};""".format(
             SELECT_PART, ' AND '.join(and_part)), params).fetchall():
 
-        result += (LEMeldung(PZN=r[0], ENR=r[1].replace(' ', '').split(',') if r[1] else None, Bearbeitungsnummer=r[2], Referenzierte_Erstmeldung=r[3], Meldungsart=r[4], Beginn=r[5], Ende=r[6], Datum_der_letzten_Meldung=r[7], Art_des_Grundes=r[8], Arzneimittelbezeichnung=r[9], ATC_Code=r[10], Wirkstoffe=r[11],
-                             Krankenhausrelevant=r[12], Zulassungsinhaber=r[13], Telefon='***', EMail='***', Grund=r[16], Anmerkung_zum_Grund=r[17], Alternativpraeparat=r[18], Datum_der_Erstmeldung=r[19], Info_an_Fachkreise=r[20], Darreichungsform=r[21].replace(' ', '').split(',') if r[21] else None),)
+        result += (LEMeldung(PZN=r[0], ENR=r[1].replace(' ', '').split(',') if r[1] else None, Bearbeitungsnummer=r[2], Referenzierte_Erstmeldung=r[3], Meldungsart=r[4], Beginn=r[5], Ende=r[6], Datum_der_letzten_Meldung=r[7], Art_des_Grundes=r[8], AM_Bezeichnung=r[9], ATC=r[10], Wirkstoffe=r[11],
+                             KKH_relevant=r[12].capitalize(), Zulassungsinhaber=r[13], Telefon=r[14], EMail=r[15], Grund=r[16], Anmerkung_zum_Grund=r[17], Alternativpraeparat=r[18], Datum_der_Erstmeldung=r[19], Info_an_Fachkreise=r[20], Darreichungsform=r[21].replace(' ', '').split(',') if r[21] else None),)
 
     result = LEMeldungen(
         Anzahl_Datensaetze=len(result), LE_Meldungen=result)

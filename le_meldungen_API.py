@@ -10,6 +10,8 @@ Usage: uvicorn le_meldungen_API:app
 import duckdb
 import uvicorn
 import logging
+from datetime import datetime, timezone
+from os.path import getmtime
 from datetime import date
 from typing import List, Optional
 from fastapi import FastAPI, Request
@@ -79,8 +81,10 @@ class LEMeldung(BaseModel):
 
 
 class LEMeldungen(BaseModel):
-    Anzahl_Datensaetze: int
-    LE_Meldungen: List[LEMeldung] = []
+    Zuletzt_aktualisiert: datetime = datetime.fromtimestamp(
+        getmtime("""le_meldungen.csv"""), timezone.utc)
+    Anzahl_Datensaetze: int = 0
+    Lieferengpass_Meldungen: List[LEMeldung] = []
 
 
 @app.get("/api/v1/le_meldungen/filter", response_model=LEMeldungen, tags=['filter'])
@@ -152,7 +156,7 @@ async def filter(request: Request, pzn: Optional[str] = None, enr: Optional[str]
                              KKH_relevant=r[12].capitalize(), Zulassungsinhaber=r[13], Telefon=r[14], EMail=r[15], Grund=r[16], Anmerkung_zum_Grund=r[17], Alternativpraeparat=r[18], Datum_der_Erstmeldung=r[19], Info_an_Fachkreise=r[20], Darreichungsform=r[21].replace(' ', '').split(',') if r[21] else None),)
 
     result = LEMeldungen(
-        Anzahl_Datensaetze=len(result), LE_Meldungen=result)
+        Anzahl_Datensaetze=len(result), Lieferengpass_Meldungen=result)
 
     logger.info("filter()")
 

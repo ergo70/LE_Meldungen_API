@@ -25,7 +25,7 @@ from slowapi.util import get_remote_address
 __author__ = "Ernst-Georg Schmid"
 __copyright__ = "Copyright 2023, 2025 Ernst-Georg Schmid"
 __license__ = "MIT"
-__version__ = "2.0.0"
+__version__ = "1.0.0"
 __maintainer__ = "Ernst-Georg Schmid"
 __status__ = "Demo"
 
@@ -81,6 +81,7 @@ class LEMeldung(BaseModel):
 
 
 class LEMeldungen(BaseModel):
+    Version: str = __version__
     Zuletzt_aktualisiert: datetime = datetime.fromtimestamp(
         getmtime("""le_meldungen.csv"""), timezone.utc)
     Anzahl_Datensaetze: int = 0

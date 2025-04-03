@@ -1,0 +1,160 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://json-schema.org/draft/2020-12/schema",
+    "$defs": {
+        "LEMeldung": {
+            "properties": {
+                "PZN": {
+                    "default": null,
+                    "title": "Pzn",
+                    "type": "string"
+                },
+                "ENR": {
+                    "default": null,
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Enr",
+                    "type": "array"
+                },
+                "Bearbeitungsnummer": {
+                    "default": null,
+                    "title": "Bearbeitungsnummer",
+                    "type": "string"
+                },
+                "Referenzierte_Erstmeldung": {
+                    "default": null,
+                    "title": "Referenzierte Erstmeldung",
+                    "type": "string"
+                },
+                "Meldungsart": {
+                    "default": null,
+                    "title": "Meldungsart",
+                    "type": "string"
+                },
+                "Beginn": {
+                    "default": null,
+                    "format": "date",
+                    "title": "Beginn",
+                    "type": "string"
+                },
+                "Ende": {
+                    "default": null,
+                    "format": "date",
+                    "title": "Ende",
+                    "type": "string"
+                },
+                "Datum_der_letzten_Meldung": {
+                    "default": null,
+                    "format": "date",
+                    "title": "Datum Der Letzten Meldung",
+                    "type": "string"
+                },
+                "Art_des_Grundes": {
+                    "default": null,
+                    "title": "Art Des Grundes",
+                    "type": "string"
+                },
+                "AM_Bezeichnung": {
+                    "default": null,
+                    "title": "Am Bezeichnung",
+                    "type": "string"
+                },
+                "ATC": {
+                    "default": null,
+                    "title": "Atc",
+                    "type": "string"
+                },
+                "Wirkstoffe": {
+                    "default": null,
+                    "title": "Wirkstoffe",
+                    "type": "string"
+                },
+                "KKH_relevant": {
+                    "default": null,
+                    "title": "Kkh Relevant",
+                    "type": "string"
+                },
+                "Zulassungsinhaber": {
+                    "default": null,
+                    "title": "Zulassungsinhaber",
+                    "type": "string"
+                },
+                "Telefon": {
+                    "default": null,
+                    "title": "Telefon",
+                    "type": "string"
+                },
+                "EMail": {
+                    "default": null,
+                    "title": "Email",
+                    "type": "string"
+                },
+                "Grund": {
+                    "default": null,
+                    "title": "Grund",
+                    "type": "string"
+                },
+                "Anmerkung_zum_Grund": {
+                    "default": null,
+                    "title": "Anmerkung Zum Grund",
+                    "type": "string"
+                },
+                "Alternativpraeparat": {
+                    "default": null,
+                    "title": "Alternativpraeparat",
+                    "type": "string"
+                },
+                "Datum_der_Erstmeldung": {
+                    "default": null,
+                    "format": "date",
+                    "title": "Datum Der Erstmeldung",
+                    "type": "string"
+                },
+                "Info_an_Fachkreise": {
+                    "default": null,
+                    "title": "Info An Fachkreise",
+                    "type": "string"
+                },
+                "Darreichungsform": {
+                    "default": null,
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Darreichungsform",
+                    "type": "array"
+                }
+            },
+            "title": "LEMeldung",
+            "type": "object"
+        }
+    },
+    "properties": {
+        "Version": {
+            "default": "1.0.0",
+            "title": "Version",
+            "type": "string"
+        },
+        "Zuletzt_aktualisiert": {
+            "default": "2025-04-03T12:24:14.807850Z",
+            "format": "date-time",
+            "title": "Zuletzt Aktualisiert",
+            "type": "string"
+        },
+        "Anzahl_Datensaetze": {
+            "default": 0,
+            "title": "Anzahl Datensaetze",
+            "type": "integer"
+        },
+        "Lieferengpass_Meldungen": {
+            "default": [],
+            "items": {
+                "$ref": "#/$defs/LEMeldung"
+            },
+            "title": "Lieferengpass Meldungen",
+            "type": "array"
+        }
+    },
+    "title": "LEMeldungen",
+    "type": "object"
+}
